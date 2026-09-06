@@ -4,6 +4,10 @@ const app = express();
 
 const Port = process.env.PORT;
 
+// Middleware to parse JSON request bodies
+app.use(express.json());
+
+// Tasks array to store the tasks
 let tasks = [
   {
     id: 1,
@@ -22,6 +26,7 @@ let tasks = [
   },
 ];
 
+// Get routes
 app.get("/", (req, res) => {
   res.json({
     name: "Task API",
@@ -52,6 +57,25 @@ app.get("/tasks/:id", (req, res) => {
       error: `Task ${id} not found`,
     });
   }
+});
+
+// Post route to create a new task
+app.post("/tasks", (req, res) => {
+  let title = req.body.title;
+  if (!title || title.trim() === "") {
+    return res.status(400).json({
+      error: "Title is required",
+    });
+  }
+
+  // new task object
+  let newTask = {
+    id: tasks.length + 1,
+    title: title,
+    done: false,
+  };
+  tasks.push(newTask);
+  res.status(201).json(newTask);
 });
 
 app.listen(Port, () => {
