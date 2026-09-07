@@ -1,11 +1,16 @@
 const dotEnv = require("dotenv").config();
+const swaggerUi = require("swagger-ui-express");
+
 const express = require("express");
 const app = express();
+
+const swaggerSpec = require("./swaggerSpec");
 
 const Port = process.env.PORT;
 
 // Middleware to parse JSON request bodies
 app.use(express.json());
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Tasks array to store the tasks
 let tasks = [
