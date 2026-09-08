@@ -1,5 +1,6 @@
 const dotEnv = require("dotenv").config();
 const swaggerUi = require("swagger-ui-express");
+const db = require("./db");
 
 const express = require("express");
 const app = express();
@@ -47,13 +48,14 @@ app.get("/health", (req, res) => {
 });
 
 app.get("/tasks", (req, res) => {
+  const tasks = db.prepare("SELECT * FROM tasks").all();
   res.json(tasks);
 });
 
 app.get("/tasks/:id", (req, res) => {
-  let id = Number(req.params.id);
+  let id = parseInt(req.params.id);
 
-  let task = tasks.find((task) => task.id === id);
+  const task = db.prepare("SELECT * FROM tasks WHERE id =?").get(id);
 
   if (task) {
     res.json(task);

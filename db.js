@@ -25,3 +25,5 @@ if (count.count === 0) {
   console.log("3 seed tasks inserted.");
 }
 console.log("Database initialized successfully");
+
+module.exports = db;
