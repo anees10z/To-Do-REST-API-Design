@@ -75,23 +75,17 @@ app.post("/tasks", (req, res) => {
       error: "Title is required",
     });
   }
-
-  let newId = 1;
-
-  while (tasks.some((task) => task.id === newId)) {
-    newId++;
-  }
+  const stmt = db.prepare("INSERT INTO tasks (title, done) VALUES(?,?)");
+  const result = stmt.run(title, 0);
 
   const newTask = {
-    id: newId,
+    id: result.lastInsertRowid,
     title: title.trim(),
     done: false,
   };
 
-  tasks.push(newTask);
-
   res.status(201).json(newTask);
-});
+  });
 
 // Put route to update a task
 app.put("/tasks/:id", (req, res) => {
