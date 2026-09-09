@@ -1,8 +1,8 @@
 # 🚀 To-Do REST API
 
-A simple **in-memory REST API** for managing tasks, built with **Node.js and Express.js**.
+A simple **SQLite-backed REST API** for managing tasks, built with **Node.js and Express.js**.
 
-This project implements complete **CRUD operations** with request validation, proper HTTP status codes, Swagger UI documentation, API testing with `curl`, and Git/GitHub workflow.
+This project implements complete **CRUD operations** with request validation, proper HTTP status codes, Swagger UI documentation, SQLite database persistence, API testing using Swagger UI and curl, and Git/GitHub workflow.
 
 ---
 
@@ -16,12 +16,14 @@ This project implements complete **CRUD operations** with request validation, pr
 - ✅ Request body validation
 - ✅ 404 handling for unknown tasks
 - ✅ Proper HTTP status codes
+- ✅ SQLite database persistence
+- ✅ Automatic database and table creation
+- ✅ Automatic seed data on first run
+- ✅ Parameterized SQL queries
 - ✅ Interactive Swagger UI documentation
 - ✅ API testing using Swagger UI and curl
-- ✅ In-memory task storage
-- ✅ Next free ID generation
-
-> **Note:** Tasks are stored only in memory. Restarting the server resets the task data. This is intentional for this assignment.
+- ✅ Data persists after server restart
+- ✅ Git & GitHub workflow
 
 ---
 
@@ -30,6 +32,8 @@ This project implements complete **CRUD operations** with request validation, pr
 - **Node.js**
 - **Express.js**
 - **JavaScript**
+- **SQLite**
+- **better-sqlite3**
 - **Swagger UI**
 - **OpenAPI 3.0**
 - **dotenv**
@@ -37,7 +41,7 @@ This project implements complete **CRUD operations** with request validation, pr
 
 ---
 
-## 📂 Project Structure
+# 📂 Project Structure
 
 ```text
 To-Do-REST-API-Design/
@@ -50,15 +54,24 @@ To-Do-REST-API-Design/
 │   ├── get-tasks-id.PNG
 │   ├── post-tasks.PNG
 │   ├── put-tasks-id.PNG
-│   └── UI.PNG
+│   ├── UI.PNG
+│   │
+│   ├── alltasksAfterDelete.PNG
+│   ├── delete.PNG
+│   ├── insert.PNG
+│   ├── update.PNG
+│   └── AllTasks.PNG
 │
 ├── app.js
+├── db.js
 ├── swaggerSpec.js
 ├── package.json
 ├── package-lock.json
 ├── .gitignore
 └── README.md
 ```
+
+> **Note:** `tasks.db` is intentionally not included in Git. It is created automatically when the application starts.
 
 ---
 
@@ -97,6 +110,70 @@ The API will run on:
 ```text
 http://localhost:3000
 ```
+
+On the first run, the application automatically:
+
+1. Creates the SQLite database.
+2. Creates the `tasks` table if it does not exist.
+3. Inserts three seed tasks if the table is empty.
+
+The database file is:
+
+```text
+tasks.db
+```
+
+---
+
+# 💾 SQLite Database
+
+## Why SQLite?
+
+SQLite was chosen because it is lightweight, simple to set up, requires no separate database server, and stores the application's data in a single database file.
+
+It is well suited for this project because it provides real database persistence without requiring a separate database service.
+
+---
+
+## Database Location
+
+The SQLite database is stored in the project root:
+
+```text
+tasks.db
+```
+
+The database is created automatically by `db.js`.
+
+The database file is intentionally **git-ignored** so that every fresh clone can create its own local database automatically.
+
+---
+
+## Database Schema
+
+The project uses a `tasks` table with the following columns:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INTEGER | Primary key and unique task ID |
+| `title` | TEXT | Task title |
+| `done` | BOOLEAN | Task completion status, stored as `0` or `1` |
+
+---
+
+## Automatic Seed Data
+
+When the database is created for the first time, three example tasks are inserted:
+
+```text
+1. Learn HTTP
+2. Build API
+3. Push to GitHub
+```
+
+Seed data is inserted **only when the table is empty**.
+
+Restarting the application does not insert duplicate seed tasks.
 
 ---
 
@@ -150,6 +227,8 @@ Each task has the following structure:
 | `title` | String | Task title |
 | `done` | Boolean | Task completion status |
 
+> SQLite stores the `done` value as `0` or `1`, while the API represents it as a boolean.
+
 ---
 
 # 🧪 API Examples
@@ -162,7 +241,7 @@ Each task has the following structure:
 curl -i http://localhost:3000/tasks
 ```
 
-### Response
+### Example Response
 
 ```json
 [
@@ -331,20 +410,48 @@ HTTP/1.1 404 Not Found
 The complete CRUD flow implemented in this project is:
 
 ```text
-             To-Do REST API
-                    │
-       ┌────────────┼────────────┐
-       │            │            │
-     Create        Read        Update
-       │            │            │
-     POST       GET /tasks    PUT /tasks/:id
-       │            │            │
-       └────────────┼────────────┘
-                    │
-                  Delete
-                    │
-              DELETE /tasks/:id
+                 Client
+                   │
+                   ▼
+            Express REST API
+                   │
+                   ▼
+             SQLite Database
+                   │
+        ┌──────────┼──────────┐
+        │          │          │
+      Create      Read      Update
+        │          │          │
+      POST      GET /tasks   PUT
+        │          │          │
+        └──────────┼──────────┘
+                   │
+                 Delete
+                   │
+             DELETE /tasks/:id
 ```
+
+---
+
+# 🗄️ Database Flow
+
+```text
+Client
+   │
+   ▼
+Express REST API
+   │
+   ▼
+Parameterized SQL Queries
+   │
+   ▼
+SQLite
+   │
+   ▼
+tasks.db
+```
+
+The API uses `better-sqlite3` to execute parameterized SQL queries against the SQLite database.
 
 ---
 
@@ -422,9 +529,29 @@ or:
 
 ---
 
+# 🔐 SQL Query Safety
+
+The application uses **parameterized SQL queries** instead of directly concatenating user input into SQL statements.
+
+For example:
+
+```sql
+SELECT * FROM tasks WHERE id = ?;
+```
+
+and:
+
+```sql
+INSERT INTO tasks (title, done) VALUES (?, ?);
+```
+
+Parameterized queries help prevent SQL injection and safely handle user-provided values.
+
+---
+
 # 🧪 Testing Evidence
 
-The API was tested using both **Swagger UI** and **curl**.
+The API was tested using **Swagger UI**, `curl`, and DB Browser for SQLite.
 
 ## GET All Tasks
 
@@ -470,9 +597,81 @@ The newly created task is also visible when fetching all tasks.
 
 ---
 
-# 💾 Data Storage
+# 🖥️ SQLite Database Exploration
 
-This project uses an **in-memory JavaScript array** to store tasks.
+The SQLite database was explored using **DB Browser for SQLite**.
+
+The following operations were performed:
+
+- Viewing all tasks
+- Inserting a task
+- Updating task data
+- Deleting a task
+- Verifying the database after deletion
+
+## Database View
+
+![All Tasks](./docs/AllTasks.PNG)
+
+---
+
+## Insert Operation
+
+![Insert Task](./docs/insert.PNG)
+
+---
+
+## Update Operation
+
+![Update Task](./docs/update.PNG)
+
+---
+
+## Delete Operation
+
+![Delete Task](./docs/delete.PNG)
+
+---
+
+## Tasks After Delete
+
+![Tasks After Delete](./docs/alltasksAfterDelete.PNG)
+
+---
+
+# 🔎 Example SQL Query
+
+One example query used while exploring the database was:
+
+```sql
+SELECT * FROM tasks WHERE done = 1;
+```
+
+This query returns all completed tasks from the `tasks` table.
+
+Other SQL operations used during database exploration included:
+
+```sql
+SELECT * FROM tasks;
+```
+
+```sql
+SELECT COUNT(*) FROM tasks;
+```
+
+```sql
+UPDATE tasks SET done = 1;
+```
+
+```sql
+DELETE FROM tasks WHERE done = 1;
+```
+
+---
+
+# 🔄 Data Persistence
+
+Unlike the original in-memory version, this project now stores tasks in a SQLite database.
 
 ```text
 Client
@@ -481,33 +680,88 @@ Client
 Express REST API
    │
    ▼
-In-Memory Tasks Array
+SQLite
+   │
+   ▼
+tasks.db
 ```
 
-There is no database or file-based persistence in this version.
+Because the data is stored in `tasks.db`, tasks remain available after restarting the server.
 
-Therefore, restarting the server resets the tasks to the initial data.
+The database, table, and seed data are created automatically when required.
+
+---
+
+# 🌱 Fresh Clone Setup
+
+A fresh clone does not require an existing `tasks.db` file.
+
+After cloning the repository:
+
+```bash
+git clone <YOUR_GITHUB_REPOSITORY_URL>
+cd To-Do-REST-API-Design
+npm install
+node app.js
+```
+
+The application automatically creates:
+
+```text
+tasks.db
+```
+
+and the required `tasks` table.
+
+If the table is empty, the application inserts the three initial seed tasks.
+
+This makes the project reproducible on a fresh machine without manually creating the database.
+
+---
+
+# 🚫 Database File and Git
+
+The `tasks.db` file is intentionally excluded from Git.
+
+The `.gitignore` file contains:
+
+```gitignore
+tasks.db
+```
+
+This allows each clone of the repository to create and maintain its own local SQLite database.
 
 ---
 
 # 🔀 Git Development Stages
 
-The project was developed incrementally through meaningful commits:
+The project was developed incrementally through meaningful commits.
+
+## Assignment 1
 
 ```text
-Stage 0: hello server
-        ↓
-Stage 1: root and health endpoints
-        ↓
-Stage 2: read endpoints with 404
-        ↓
-Stage 3: create with validation
-        ↓
-Stage 4: full CRUD
-        ↓
-Stage 5: Swagger UI
-        ↓
-Stage 6: publish and docs
+A1
+│
+├── Stage 0: hello server
+├── Stage 1: root and health endpoints
+├── Stage 2: read endpoints with 404
+├── Stage 3: create with validation
+├── Stage 4: full CRUD
+├── Stage 5: Swagger UI
+└── Stage 6: publish and docs
+```
+
+## Assignment 2 — SQLite Migration
+
+```text
+A2
+│
+├── Stage 0: create SQLite database
+├── Stage 1: database read endpoints
+├── Stage 2: insert into database
+├── Stage 3: update and delete with SQL
+├── Stage 4: explored SQLite
+└── Stage 5: database documentation
 ```
 
 ---
@@ -528,6 +782,11 @@ Through this project, I practiced:
 - Swagger UI
 - OpenAPI 3.0
 - API testing with curl
+- SQLite database
+- SQL queries
+- Parameterized queries
+- Database persistence
+- Automatic database initialization
 - Git and GitHub
 - Writing API documentation
 
@@ -546,4 +805,4 @@ Maulana Azad National Urdu University
 
 **Completed**
 
-The project implements the required CRUD API, validation, Swagger documentation, API testing, and Git/GitHub workflow.
+The project implements a complete SQLite-backed CRUD REST API with validation, Swagger documentation, API testing, database persistence, automatic database initialization, SQLite exploration, and Git/GitHub workflow.
