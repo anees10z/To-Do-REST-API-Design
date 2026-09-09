@@ -189,7 +189,7 @@ Swagger UI provides an interactive interface where all CRUD endpoints can be exp
 
 ## Swagger UI Overview
 
-![Swagger UI Overview](./docs/UI.PNG)
+![Swagger UI Overview](./docs/UISwagger.PNG)
 
 ---
 
@@ -611,7 +611,7 @@ The following operations were performed:
 
 ## Database View
 
-![All Tasks](./docs/AllTasks.PNG)
+![All Tasks](./docs/UI.PNG)
 
 ---
 
