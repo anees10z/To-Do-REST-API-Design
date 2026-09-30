@@ -1,6 +1,6 @@
 const dotEnv = require("dotenv").config();
 const swaggerUi = require("swagger-ui-express");
-const db = require("./db");
+const { pool, initializeDatabase } = require("./db");
 
 const express = require("express");
 const app = express();
@@ -28,15 +28,17 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.get("/tasks", (req, res) => {
-  const tasks = db.prepare("SELECT * FROM tasks").all();
-  res.json(tasks);
+app.get("/tasks", async (req, res) => {
+  const result = await pool.query("SELECT * FROM tasks");
+  res.json(result.rows);
 });
 
-app.get("/tasks/:id", (req, res) => {
+app.get("/tasks/:id", async (req, res) => {
   let id = parseInt(req.params.id);
 
-  const task = db.prepare("SELECT * FROM tasks WHERE id =?").get(id);
+  const result = await pool.query("SELECT * FROM tasks WHERE id = $1", [id]);
+
+  const task = result.rows[0];
 
   if (task) {
     res.json(task);
@@ -48,7 +50,7 @@ app.get("/tasks/:id", (req, res) => {
 });
 
 // Post route to create a new task
-app.post("/tasks", (req, res) => {
+app.post("/tasks", async (req, res) => {
   const title = req.body.title;
 
   if (!title || typeof title !== "string" || title.trim() === "") {
@@ -56,26 +58,27 @@ app.post("/tasks", (req, res) => {
       error: "Title is required",
     });
   }
+
   const cleanTitle = title.trim();
-  const stmt = db.prepare("INSERT INTO tasks (title, done) VALUES(?,?)");
-  const result = stmt.run(cleanTitle, 0);
 
-  const newTask = {
-    id: result.lastInsertRowid,
-    title: cleanTitle,
-    done: false,
-  };
+  const result = await pool.query(
+    `INSERT INTO tasks (title, done)
+     VALUES ($1, $2)
+     RETURNING *`,
+    [cleanTitle, false],
+  );
 
-  res.status(201).json(newTask);
+  res.status(201).json(result.rows[0]);
 });
 
 // Put route to update a task
-app.put("/tasks/:id", (req, res) => {
+app.put("/tasks/:id", async (req, res) => {
   const id = parseInt(req.params.id);
 
-  const task = db.prepare("SELECT  * FROM tasks WHERE id = ?").get(id);
+  const result = await pool.query("SELECT * FROM tasks WHERE id = $1", [id]);
 
-  // Task not found
+  const task = result.rows[0];
+
   if (!task) {
     return res.status(404).json({
       error: `Task ${id} not found`,
@@ -84,14 +87,12 @@ app.put("/tasks/:id", (req, res) => {
 
   const { title, done } = req.body;
 
-  // Empty body
   if (Object.keys(req.body).length === 0) {
     return res.status(400).json({
       error: "At least one field is required",
     });
   }
 
-  // Validate title if provided
   if (title !== undefined) {
     if (typeof title !== "string" || title.trim() === "") {
       return res.status(400).json({
@@ -100,7 +101,6 @@ app.put("/tasks/:id", (req, res) => {
     }
   }
 
-  // Validate done if provided
   if (done !== undefined) {
     if (typeof done !== "boolean") {
       return res.status(400).json({
@@ -109,36 +109,52 @@ app.put("/tasks/:id", (req, res) => {
     }
   }
 
-  // actaul updates
   const updatedTitle = title !== undefined ? title.trim() : task.title;
-  const updatedDone = done !== undefined ? (done ? 1 : 0) : task.done;
 
-  const stmt = db.prepare("UPDATE tasks SET title = ?, done = ? WHERE id = ?");
-  stmt.run(updatedTitle, updatedDone ? 1 : 0, id);
-  const updatedTask = db.prepare("SELECT * FROM tasks WHERE id = ?").get(id);
+  const updatedDone = done !== undefined ? done : task.done;
 
-  res.status(200).json({
-    id: updatedTask.id,
-    title: updatedTask.title,
-    done: Boolean(updatedTask.done),
-  });
+  const updateResult = await pool.query(
+    `UPDATE tasks
+     SET title = $1, done = $2
+     WHERE id = $3
+     RETURNING *`,
+    [updatedTitle, updatedDone, id],
+  );
+
+  res.status(200).json(updateResult.rows[0]);
 });
 
 // Delete route to delete a task
-app.delete("/tasks/:id", (req, res) => {
-  let id = parseInt(req.params.id);
-  const task = db.prepare("SELECT * FROM tasks WHERE id = ?").get(id);
+app.delete("/tasks/:id", async (req, res) => {
+  const id = parseInt(req.params.id);
+
+  const result = await pool.query("SELECT * FROM tasks WHERE id = $1", [id]);
+
+  const task = result.rows[0];
+
   if (!task) {
     return res.status(404).json({
       error: `Task ${id} not found`,
     });
   }
-  const stmt = db.prepare("DELETE FROM tasks WHERE id =?");
-  stmt.run(id);
+
+  await pool.query("DELETE FROM tasks WHERE id = $1", [id]);
+
   res.status(204).send();
 });
 
-// server listening on port
-app.listen(Port, () => {
-  console.log(`Server Listening on PORT: ${Port}`);
-});
+// server start here
+async function startServer() {
+  try {
+    await initializeDatabase();
+
+    app.listen(Port, () => {
+      console.log(`Server Listening on PORT: ${Port}`);
+    });
+  } catch (error) {
+    console.error("Failed to initialize database:", error);
+    process.exit(1);
+  }
+}
+
+startServer();

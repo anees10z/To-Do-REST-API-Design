@@ -1,29 +1,42 @@
-const database = require("better-sqlite3");
-const db = new database("tasks.db");
+const { Pool } = require("pg");
 
-db.exec(`
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+async function initializeDatabase() {
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS tasks(
-        id INTEGER PRIMARY KEY,
-        title TEXT,
-        done BOOLEAN
+      id SERIAL PRIMARY KEY,
+      title TEXT,
+      done BOOLEAN
     )
-`);
+  `);
 
-// check whether the table is empty
-const count = db.prepare("SELECT COUNT(*) AS count FROM tasks").get();
+  const result = await pool.query(
+    "SELECT COUNT(*) AS count FROM tasks"
+  );
 
-// seeds only when the table is empty
-if (count.count === 0) {
-  const insert = db.prepare(`
-        INSERT INTO tasks (title, done) VALUES (?,?)
-    `);
+  if (Number(result.rows[0].count) === 0) {
+    await pool.query(`
+      INSERT INTO tasks (title, done)
+      VALUES
+        ($1, $2),
+        ($3, $4),
+        ($5, $6)
+    `, [
+      "Learn HTTP", false,
+      "Build API", false,
+      "Push to GitHub", false
+    ]);
 
-  insert.run("Learn HTTP", 0);
-  insert.run("Build API", 0);
-  insert.run("Push to GitHub", 0);
+    console.log("3 seed tasks inserted.");
+  }
 
-  console.log("3 seed tasks inserted.");
+  console.log("Database initialized successfully");
 }
-console.log("Database initialized successfully");
 
-module.exports = db;
+module.exports = {
+  pool,
+  initializeDatabase
+};
