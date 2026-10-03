@@ -44,7 +44,7 @@ app.get("/tasks/:id", async (req, res) => {
     res.json(task);
   } else {
     res.status(404).json({
-      error: `Task ${id} not found`,
+      error: `Task not found`,
     });
   }
 });
