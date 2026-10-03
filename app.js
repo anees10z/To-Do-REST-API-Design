@@ -81,7 +81,7 @@ app.put("/tasks/:id", async (req, res) => {
 
   if (!task) {
     return res.status(404).json({
-      error: `Task ${id} not found`,
+      error: `Task not found`,
     });
   }
 
@@ -134,7 +134,7 @@ app.delete("/tasks/:id", async (req, res) => {
 
   if (!task) {
     return res.status(404).json({
-      error: `Task ${id} not found`,
+      error: `Task not found`,
     });
   }
 
