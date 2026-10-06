@@ -1,8 +1,20 @@
-# 🚀 To-Do REST API
+# 🚀 To-Do REST API — PostgreSQL + Docker
 
-A simple **SQLite-backed REST API** for managing tasks, built with **Node.js and Express.js**.
+A production-style **Task REST API** built with **Node.js, Express.js, PostgreSQL, Docker and Docker Compose**.
 
-This project implements complete **CRUD operations** with request validation, proper HTTP status codes, Swagger UI documentation, SQLite database persistence, API testing using Swagger UI and curl, and Git/GitHub workflow.
+This project is **FlyRank Internship · Backend Track · Containerize your stack**.
+
+The project is the third storage implementation of the same Task API:
+
+- **A1:** In-memory storage
+- **A2:** SQLite storage
+- **A3:** PostgreSQL running in Docker
+
+The API keeps the same CRUD behaviour while the storage layer is moved to a real PostgreSQL database. The complete application stack can be started with a single command:
+
+```bash
+docker compose up
+```
 
 ---
 
@@ -13,31 +25,38 @@ This project implements complete **CRUD operations** with request validation, pr
 - ✅ Get a task by ID
 - ✅ Update a task
 - ✅ Delete a task
-- ✅ Request body validation
-- ✅ 404 handling for unknown tasks
-- ✅ Proper HTTP status codes
-- ✅ SQLite database persistence
-- ✅ Automatic database and table creation
-- ✅ Automatic seed data on first run
-- ✅ Parameterized SQL queries
-- ✅ Interactive Swagger UI documentation
-- ✅ API testing using Swagger UI and curl
-- ✅ Data persists after server restart
-- ✅ Git & GitHub workflow
+- ✅ Request validation
+- ✅ JSON error responses
+- ✅ Correct HTTP status codes
+- ✅ PostgreSQL database
+- ✅ PostgreSQL running inside Docker
+- ✅ Automatic `tasks` table creation
+- ✅ Three seed tasks on first run only
+- ✅ Parameterized PostgreSQL queries using `pg`
+- ✅ Docker volume for persistent database data
+- ✅ Docker Compose for the complete stack
+- ✅ PostgreSQL health check
+- ✅ `.env` based configuration
+- ✅ `.env` ignored by Git
+- ✅ `.env.example` included for setup
+- ✅ Git/GitHub workflow
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Node.js**
-- **Express.js**
-- **JavaScript**
-- **SQLite**
-- **better-sqlite3**
-- **Swagger UI**
-- **OpenAPI 3.0**
-- **dotenv**
-- **Git & GitHub**
+| Technology | Purpose |
+|---|---|
+| Node.js | JavaScript runtime |
+| Express.js | REST API framework |
+| JavaScript | Application language |
+| PostgreSQL 17 | Relational database |
+| `pg` | Node.js PostgreSQL driver |
+| Docker | Container platform |
+| Docker Compose | Runs API and database together |
+| dotenv / environment variables | Configuration and secrets |
+| Git & GitHub | Version control and publishing |
+| curl | API testing |
 
 ---
 
@@ -47,31 +66,94 @@ This project implements complete **CRUD operations** with request validation, pr
 To-Do-REST-API-Design/
 │
 ├── docs/
-│   ├── delete-tasks-id.PNG
-│   ├── delete-tasks-id-verify.PNG
-│   ├── get-tasks.PNG
-│   ├── get-tasks-after-post.PNG
-│   ├── get-tasks-id.PNG
-│   ├── post-tasks.PNG
-│   ├── put-tasks-id.PNG
-│   ├── UI.PNG
-│   │
-│   ├── alltasksAfterDelete.PNG
-│   ├── delete.PNG
-│   ├── insert.PNG
-│   ├── update.PNG
-│   └── AllTasks.PNG
+│   ├── api-crud-tests.png
+│   ├── api-get-tasks.PNG
+│   ├── docker-compose-up.PNG
+│   ├── postgresql-data.png
+│   └── postgresql-tables.png
 │
 ├── app.js
 ├── db.js
 ├── swaggerSpec.js
+├── Dockerfile
+├── compose.yaml
+├── .dockerignore
+├── .env.example
+├── .gitignore
 ├── package.json
 ├── package-lock.json
-├── .gitignore
 └── README.md
 ```
 
-> **Note:** `tasks.db` is intentionally not included in Git. It is created automatically when the application starts.
+> **Security note:** `.env` is intentionally not included in Git. It contains local configuration/secrets and is ignored by `.gitignore`.
+
+---
+
+# 🐳 Docker Compose
+
+The complete application contains two services:
+
+```text
+                 Docker Compose
+                       │
+             ┌─────────┴─────────┐
+             │                   │
+          API service        PostgreSQL
+             │                   │
+       Node + Express       postgres:17
+             │                   │
+             └─────── db ────────┘
+                       │
+                 taskdata volume
+```
+
+- `api` builds the Node.js application from the `Dockerfile`.
+- `db` runs PostgreSQL 17.
+- The API reaches PostgreSQL using the Compose service name `db`.
+- The named `taskdata` volume keeps database rows after containers are stopped and recreated.
+- A PostgreSQL health check prevents the API from starting before the database is ready.
+
+---
+
+# 🔐 Environment Variables
+
+The project uses environment variables instead of hardcoding database credentials in the application configuration.
+
+Create your local `.env` from the example:
+
+```bash
+cp .env.example .env
+```
+
+The `.env.example` file contains the required keys:
+
+```env
+PORT=3000
+DATABASE_URL=postgres://postgres:YOUR_PASSWORD@localhost:5432/tasks
+POSTGRES_PASSWORD=YOUR_PASSWORD
+DATABASE_URL_DOCKER=postgres://postgres:YOUR_PASSWORD@db:5432/tasks
+```
+
+### Why are there two database URLs?
+
+When the Node application runs directly on the host machine, PostgreSQL is reached through:
+
+```text
+localhost:5432
+```
+
+When the API runs inside Docker Compose, it must reach the database through the Compose service name:
+
+```text
+ db:5432
+```
+
+Therefore:
+
+- `DATABASE_URL` is for the local/host configuration.
+- `DATABASE_URL_DOCKER` is used by the API container.
+
+The real `.env` file is ignored by Git and must never be committed.
 
 ---
 
@@ -83,87 +165,99 @@ To-Do-REST-API-Design/
 git clone <YOUR_GITHUB_REPOSITORY_URL>
 ```
 
-## 2. Navigate to the project directory
+## 2. Enter the project
 
 ```bash
 cd To-Do-REST-API-Design
 ```
 
-## 3. Install dependencies
+## 3. Create the environment file
 
 ```bash
-npm install
+cp .env.example .env
 ```
+
+Edit `.env` if necessary and set your local PostgreSQL password value.
 
 ---
 
-# ▶️ Run the Server
+# ▶️ Run the Complete Stack
 
-Start the server using:
+The main A3 requirement is to start the whole application with one command.
 
 ```bash
-node app.js
+docker compose up
 ```
 
-The API will run on:
+To rebuild the application image after code changes:
+
+```bash
+docker compose up --build
+```
+
+The API is available at:
 
 ```text
 http://localhost:3000
 ```
 
-On the first run, the application automatically:
-
-1. Creates the SQLite database.
-2. Creates the `tasks` table if it does not exist.
-3. Inserts three seed tasks if the table is empty.
-
-The database file is:
+The PostgreSQL service is available inside the Compose network as:
 
 ```text
-tasks.db
+db:5432
+```
+
+The host-facing API port is:
+
+```text
+3000
 ```
 
 ---
 
-# 💾 SQLite Database
+## 🖼️ Docker Compose Running
 
-## Why SQLite?
+The following screenshot shows the API and PostgreSQL services running through Docker Compose.
 
-SQLite was chosen because it is lightweight, simple to set up, requires no separate database server, and stores the application's data in a single database file.
-
-It is well suited for this project because it provides real database persistence without requiring a separate database service.
+![Docker Compose Running](./docs/docker-compose-up.PNG)
 
 ---
 
-## Database Location
+# 🗄️ PostgreSQL Database
 
-The SQLite database is stored in the project root:
+The database used by this project is named:
 
 ```text
-tasks.db
+tasks
 ```
 
-The database is created automatically by `db.js`.
+The application automatically creates the `tasks` table if it does not already exist.
 
-The database file is intentionally **git-ignored** so that every fresh clone can create its own local database automatically.
+### Database schema
+
+| Column | PostgreSQL Type | Description |
+|---|---|---|
+| `id` | `SERIAL` | Primary key and unique task ID |
+| `title` | `TEXT` | Task title |
+| `done` | `BOOLEAN` | Task completion status |
+
+The table is created with the equivalent structure:
+
+```sql
+CREATE TABLE IF NOT EXISTS tasks(
+    id SERIAL PRIMARY KEY,
+    title TEXT,
+    done BOOLEAN
+);
+```
 
 ---
 
-## Database Schema
+## 🌱 Seed Data
 
-The project uses a `tasks` table with the following columns:
+On startup, the application checks whether the `tasks` table is empty.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | INTEGER | Primary key and unique task ID |
-| `title` | TEXT | Task title |
-| `done` | BOOLEAN | Task completion status, stored as `0` or `1` |
-
----
-
-## Automatic Seed Data
-
-When the database is created for the first time, three example tasks are inserted:
+If it is empty, three example tasks are inserted:
 
 ```text
 1. Learn HTTP
@@ -171,45 +265,62 @@ When the database is created for the first time, three example tasks are inserte
 3. Push to GitHub
 ```
 
-Seed data is inserted **only when the table is empty**.
-
-Restarting the application does not insert duplicate seed tasks.
+The seed operation happens **only when the table contains zero rows**. Restarting the application does not create duplicate seed tasks.
 
 ---
 
-# 📚 Swagger API Documentation
+## 📋 PostgreSQL Tables
 
-Interactive API documentation is available at:
+The database table was verified using `psql` with `\dt`.
 
-```text
-http://localhost:3000/docs
+![PostgreSQL Tables](./docs/postgresql-tables.png)
+
+---
+
+## 📊 PostgreSQL Data
+
+The seeded task rows were verified using:
+
+```sql
+SELECT * FROM tasks;
 ```
 
-Swagger UI provides an interactive interface where all CRUD endpoints can be explored and tested using **Try it out**.
-
-## Swagger UI Overview
-
-![Swagger UI Overview](./docs/UISwagger.PNG)
+![PostgreSQL Data](./docs/postgresql-data.png)
 
 ---
 
 # 🔗 API Endpoints
 
 | Method | Endpoint | Description | Success Status |
-|--------|----------|-------------|----------------|
-| GET | `/` | Get API information | `200` |
-| GET | `/health` | Check API health | `200` |
+|---|---|---|---|
+| GET | `/` | API information | `200` |
+| GET | `/health` | API health check | `200` |
 | GET | `/tasks` | Get all tasks | `200` |
 | GET | `/tasks/:id` | Get a task by ID | `200` |
-| POST | `/tasks` | Create a new task | `201` |
+| POST | `/tasks` | Create a task | `201` |
 | PUT | `/tasks/:id` | Update a task | `200` |
 | DELETE | `/tasks/:id` | Delete a task | `204` |
+
+### Error status codes
+
+| Status | Meaning |
+|---|---|
+| `400` | Invalid request body |
+| `404` | Task not found |
+
+Errors are returned as JSON, for example:
+
+```json
+{
+  "error": "Task not found"
+}
+```
 
 ---
 
 # 📝 Task Object
 
-Each task has the following structure:
+A task has this structure:
 
 ```json
 {
@@ -219,29 +330,29 @@ Each task has the following structure:
 }
 ```
 
-### Task Fields
-
 | Field | Type | Description |
-|-------|------|-------------|
-| `id` | Integer | Unique task ID |
+|---|---|---|
+| `id` | Integer | Unique task identifier |
 | `title` | String | Task title |
-| `done` | Boolean | Task completion status |
-
-> SQLite stores the `done` value as `0` or `1`, while the API represents it as a boolean.
+| `done` | Boolean | Whether the task is completed |
 
 ---
 
-# 🧪 API Examples
+# 🧪 API Testing
 
 ## 1. Get All Tasks
-
-### Request
 
 ```bash
 curl -i http://localhost:3000/tasks
 ```
 
-### Example Response
+Expected status:
+
+```text
+HTTP/1.1 200 OK
+```
+
+Example response:
 
 ```json
 [
@@ -263,131 +374,39 @@ curl -i http://localhost:3000/tasks
 ]
 ```
 
-### Swagger Test
-
-![Get All Tasks](./docs/get-tasks.PNG)
+![GET Tasks](./docs/api-get-tasks.PNG)
 
 ---
 
-# 2. Get Task by ID
-
-### Request
+## 2. Get Task by ID
 
 ```bash
-curl -i http://localhost:3000/tasks/3
+curl -i http://localhost:3000/tasks/1
 ```
 
-### Example Response
-
-```json
-{
-  "id": 3,
-  "title": "Push to GitHub",
-  "done": false
-}
-```
-
-### Swagger Test
-
-![Get Task By ID](./docs/get-tasks-id.PNG)
-
----
-
-# 3. Create a New Task
-
-### Request
-
-```bash
-curl -i -X POST http://localhost:3000/tasks \
--H "Content-Type: application/json" \
--d "{\"title\":\"Learn Swagger\"}"
-```
-
-### Example Response
-
-```text
-HTTP/1.1 201 Created
-```
-
-```json
-{
-  "id": 4,
-  "title": "Learn Swagger",
-  "done": false
-}
-```
-
-### Swagger Test
-
-![Create Task](./docs/post-tasks.PNG)
-
----
-
-# 4. Update a Task
-
-The API supports partial updates, so either `title`, `done`, or both can be updated.
-
-### Request
-
-```bash
-curl -i -X PUT http://localhost:3000/tasks/4 \
--H "Content-Type: application/json" \
--d "{\"done\":true}"
-```
-
-### Example Response
+Expected status:
 
 ```text
 HTTP/1.1 200 OK
 ```
 
+Example response:
+
 ```json
 {
-  "id": 4,
-  "title": "Learn Swagger",
-  "done": true
+  "id": 1,
+  "title": "Learn HTTP",
+  "done": false
 }
 ```
 
-### Swagger Test
-
-![Update Task](./docs/put-tasks-id.PNG)
-
----
-
-# 5. Delete a Task
-
-### Request
+For an unknown ID:
 
 ```bash
-curl -i -X DELETE http://localhost:3000/tasks/2
+curl -i http://localhost:3000/tasks/9999
 ```
 
-### Response
-
-```text
-HTTP/1.1 204 No Content
-```
-
-A successful delete returns an empty response body.
-
-### Swagger Test
-
-![Delete Task](./docs/delete-tasks-id.PNG)
-
----
-
-# 6. Verify Deleted Task
-
-After deleting a task, requesting the same task ID should return `404 Not Found`.
-
-### Request
-
-```bash
-curl -i http://localhost:3000/tasks/2
-```
-
-### Response
+Expected response:
 
 ```text
 HTTP/1.1 404 Not Found
@@ -395,89 +414,102 @@ HTTP/1.1 404 Not Found
 
 ```json
 {
-  "error": "Task 2 not found"
+  "error": "Task not found"
 }
 ```
 
-### Swagger Test
-
-![Verify Deleted Task](./docs/delete-tasks-id-verify.PNG)
-
 ---
 
-# 🔄 CRUD Flow
+## 3. Create a Task
 
-The complete CRUD flow implemented in this project is:
-
-```text
-                 Client
-                   │
-                   ▼
-            Express REST API
-                   │
-                   ▼
-             SQLite Database
-                   │
-        ┌──────────┼──────────┐
-        │          │          │
-      Create      Read      Update
-        │          │          │
-      POST      GET /tasks   PUT
-        │          │          │
-        └──────────┼──────────┘
-                   │
-                 Delete
-                   │
-             DELETE /tasks/:id
+```bash
+curl -i -X POST http://localhost:3000/tasks \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Docker Practice","done":false}'
 ```
 
----
-
-# 🗄️ Database Flow
+Expected status:
 
 ```text
-Client
-   │
-   ▼
-Express REST API
-   │
-   ▼
-Parameterized SQL Queries
-   │
-   ▼
-SQLite
-   │
-   ▼
-tasks.db
+HTTP/1.1 201 Created
 ```
 
-The API uses `better-sqlite3` to execute parameterized SQL queries against the SQLite database.
+The API inserts the task using a parameterized PostgreSQL query and returns the newly created row.
 
 ---
 
-# ❌ Validation & Error Handling
+## 4. Update a Task
 
-The API validates request data and returns appropriate HTTP status codes.
+```bash
+curl -i -X PUT http://localhost:3000/tasks/4 \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Docker Practice Updated","done":true}'
+```
 
-| Status Code | Meaning |
-|-------------|---------|
-| `200` | Successful read or update |
-| `201` | Task successfully created |
-| `204` | Task successfully deleted |
-| `400` | Invalid request body |
-| `404` | Task not found |
+Expected status:
 
----
+```text
+HTTP/1.1 200 OK
+```
 
-## Invalid Create Request
+An unknown ID returns:
 
-Request:
+```text
+HTTP/1.1 404 Not Found
+```
 
 ```json
-{}
+{
+  "error": "Task not found"
+}
 ```
 
-Response:
+---
+
+## 5. Delete a Task
+
+```bash
+curl -i -X DELETE http://localhost:3000/tasks/4
+```
+
+Expected status:
+
+```text
+HTTP/1.1 204 No Content
+```
+
+A successful delete has an empty response body.
+
+---
+
+## 6. CRUD Status-Code Evidence
+
+The complete CRUD testing evidence is shown below.
+
+![CRUD API Tests](./docs/api-crud-tests.png)
+
+The tested success/error statuses are:
+
+```text
+POST   → 201 Created
+PUT    → 200 OK
+DELETE → 204 No Content
+GET unknown task → 404 Not Found
+```
+
+---
+
+# 🔒 Validation & Error Handling
+
+The API validates incoming task data before writing to PostgreSQL.
+
+For example, a missing or empty title is rejected with:
+
+```text
+400 Bad Request
+```
+
+Example:
 
 ```json
 {
@@ -485,324 +517,365 @@ Response:
 }
 ```
 
-Status:
+Unknown task IDs return:
 
 ```text
-400 Bad Request
+404 Not Found
 ```
 
----
-
-## Invalid Update Request
-
-For example:
+with:
 
 ```json
 {
-  "done": "yes"
-}
-```
-
-Response:
-
-```text
-400 Bad Request
-```
-
-The API only accepts a boolean value for `done`.
-
-Valid:
-
-```json
-{
-  "done": true
-}
-```
-
-or:
-
-```json
-{
-  "done": false
+  "error": "Task not found"
 }
 ```
 
 ---
 
-# 🔐 SQL Query Safety
+# 🛡️ Parameterized SQL Queries
 
-The application uses **parameterized SQL queries** instead of directly concatenating user input into SQL statements.
+The application uses the `pg` driver and PostgreSQL parameterized queries.
 
-For example:
+For example, retrieving a task by ID uses the PostgreSQL placeholder `$1` rather than directly inserting user input into SQL:
 
-```sql
-SELECT * FROM tasks WHERE id = ?;
+```js
+pool.query(
+  "SELECT * FROM tasks WHERE id = $1",
+  [id]
+);
 ```
 
-and:
+Creating a task uses parameters and returns the inserted row:
 
 ```sql
-INSERT INTO tasks (title, done) VALUES (?, ?);
+INSERT INTO tasks (title, done)
+VALUES ($1, $2)
+RETURNING *
 ```
 
-Parameterized queries help prevent SQL injection and safely handle user-provided values.
+This keeps user-supplied values separate from the SQL statement.
 
 ---
 
-# 🧪 Testing Evidence
-
-The API was tested using **Swagger UI**, `curl`, and DB Browser for SQLite.
-
-## GET All Tasks
-
-![GET Tasks](./docs/get-tasks.PNG)
-
----
-
-## GET Task by ID
-
-![GET Task by ID](./docs/get-tasks-id.PNG)
-
----
-
-## POST Task
-
-![POST Task](./docs/post-tasks.PNG)
-
----
-
-## GET Tasks After POST
-
-The newly created task is also visible when fetching all tasks.
-
-![GET Tasks After POST](./docs/get-tasks-after-post.PNG)
-
----
-
-## PUT Task
-
-![PUT Task](./docs/put-tasks-id.PNG)
-
----
-
-## DELETE Task
-
-![DELETE Task](./docs/delete-tasks-id.PNG)
-
----
-
-## Verify Deleted Task
-
-![Deleted Task Verification](./docs/delete-tasks-id-verify.PNG)
-
----
-
-# 🖥️ SQLite Database Exploration
-
-The SQLite database was explored using **DB Browser for SQLite**.
-
-The following operations were performed:
-
-- Viewing all tasks
-- Inserting a task
-- Updating task data
-- Deleting a task
-- Verifying the database after deletion
-
-## Database View
-
-![All Tasks](./docs/UI.PNG)
-
----
-
-## Insert Operation
-
-![Insert Task](./docs/insert.PNG)
-
----
-
-## Update Operation
-
-![Update Task](./docs/update.PNG)
-
----
-
-## Delete Operation
-
-![Delete Task](./docs/delete.PNG)
-
----
-
-## Tasks After Delete
-
-![Tasks After Delete](./docs/alltasksAfterDelete.PNG)
-
----
-
-# 🔎 Example SQL Query
-
-One example query used while exploring the database was:
-
-```sql
-SELECT * FROM tasks WHERE done = 1;
-```
-
-This query returns all completed tasks from the `tasks` table.
-
-Other SQL operations used during database exploration included:
-
-```sql
-SELECT * FROM tasks;
-```
-
-```sql
-SELECT COUNT(*) FROM tasks;
-```
-
-```sql
-UPDATE tasks SET done = 1;
-```
-
-```sql
-DELETE FROM tasks WHERE done = 1;
-```
-
----
-
-# 🔄 Data Persistence
-
-Unlike the original in-memory version, this project now stores tasks in a SQLite database.
+# 🏗️ Application Architecture
 
 ```text
 Client
-   │
-   ▼
-Express REST API
-   │
-   ▼
-SQLite
-   │
-   ▼
-tasks.db
+  │
+  ▼
+HTTP Request
+  │
+  ▼
+Express API
+  │
+  ▼
+Database Module (db.js)
+  │
+  ▼
+pg Pool
+  │
+  ▼
+PostgreSQL
+  │
+  ▼
+tasks table
+  │
+  ▼
+JSON Response
 ```
 
-Because the data is stored in `tasks.db`, tasks remain available after restarting the server.
+The database-related code is kept in `db.js`, while the API routes remain focused on handling HTTP requests and responses.
 
-The database, table, and seed data are created automatically when required.
+This makes the storage implementation an implementation detail underneath the API.
 
 ---
 
-# 🌱 Fresh Clone Setup
+# 🐳 Dockerfile
 
-A fresh clone does not require an existing `tasks.db` file.
+The application image is built using the project `Dockerfile`.
 
-After cloning the repository:
+The Dockerfile:
+
+1. Starts from a Node.js base image.
+2. Sets `/app` as the working directory.
+3. Copies the package files.
+4. Installs dependencies.
+5. Copies the application source.
+6. Exposes port `3000`.
+7. Starts the application with `node app.js`.
+
+The PostgreSQL database uses the official PostgreSQL Docker image.
+
+---
+
+# 💾 Persistence with Docker Volume
+
+PostgreSQL data is stored in a named Docker volume:
+
+```yaml
+volumes:
+  taskdata:
+```
+
+The database container mounts it at:
+
+```text
+/var/lib/postgresql/data
+```
+
+This means database rows survive a container restart.
+
+The persistence flow is:
+
+```text
+Create tasks
+    ↓
+docker compose down
+    ↓
+docker compose up
+    ↓
+PostgreSQL starts again
+    ↓
+Same task rows are still present
+```
+
+Without a persistent volume, deleting the database container could remove the database's stored data.
+
+---
+
+# 🩺 PostgreSQL Health Check
+
+The Compose database service includes a health check:
+
+```yaml
+healthcheck:
+  test: ["CMD-SHELL", "pg_isready -U postgres -d tasks"]
+  interval: 5s
+  timeout: 5s
+  retries: 5
+```
+
+The API waits for the database service to become healthy before starting:
+
+```yaml
+depends_on:
+  db:
+    condition: service_healthy
+```
+
+This avoids the API trying to connect before PostgreSQL is ready to accept connections.
+
+---
+
+# 🔄 Storage Evolution: A1 → A2 → A3
+
+| Assignment | Storage | Persistence |
+|---|---|---|
+| A1 | In-memory list | Lost on application restart |
+| A2 | SQLite `tasks.db` | Stored in a local file |
+| A3 | PostgreSQL in Docker | Database server + Docker volume |
+
+The important point is that the API behaviour stays the same while the storage implementation changes underneath it.
+
+---
+
+# 🧰 Useful Docker Commands
+
+### Start the complete stack
+
+```bash
+docker compose up
+```
+
+### Start in the background
+
+```bash
+docker compose up -d
+```
+
+### Rebuild the API image
+
+```bash
+docker compose up --build
+```
+
+### See running containers
+
+```bash
+docker compose ps
+```
+
+### View logs
+
+```bash
+docker compose logs
+```
+
+### Stop the stack
+
+```bash
+docker compose down
+```
+
+> Do not use `docker compose down -v` when you want to preserve the PostgreSQL volume.
+
+### Open PostgreSQL `psql`
+
+```bash
+docker compose exec db psql -U postgres -d tasks
+```
+
+Inside `psql`:
+
+```sql
+\dt
+SELECT * FROM tasks;
+```
+
+Exit with:
+
+```sql
+\q
+```
+
+---
+
+# 🧪 Clean Clone Verification
+
+A fresh clone should be able to run the application without manually installing PostgreSQL or creating the database.
 
 ```bash
 git clone <YOUR_GITHUB_REPOSITORY_URL>
 cd To-Do-REST-API-Design
-npm install
-node app.js
+cp .env.example .env
+docker compose up
 ```
 
-The application automatically creates:
+Then test:
 
-```text
-tasks.db
+```bash
+curl -i http://localhost:3000/tasks
 ```
 
-and the required `tasks` table.
+The API should return the seeded tasks.
 
-If the table is empty, the application inserts the three initial seed tasks.
-
-This makes the project reproducible on a fresh machine without manually creating the database.
+No manual PostgreSQL installation or database setup is required because PostgreSQL is supplied by Docker Compose.
 
 ---
 
-# 🚫 Database File and Git
+# 📸 A3 Evidence
 
-The `tasks.db` file is intentionally excluded from Git.
+The repository contains evidence for the containerized PostgreSQL stack:
 
-The `.gitignore` file contains:
+### Docker Compose
 
-```gitignore
-tasks.db
+![Docker Compose](./docs/docker-compose-up.PNG)
+
+### PostgreSQL tables
+
+![PostgreSQL Tables](./docs/postgresql-tables.png)
+
+### PostgreSQL data
+
+![PostgreSQL Data](./docs/postgresql-data.png)
+
+### GET `/tasks`
+
+![GET Tasks](./docs/api-get-tasks.PNG)
+
+### CRUD tests
+
+![CRUD Tests](./docs/api-crud-tests.png)
+
+---
+
+# 📌 Assignment Stage History
+
+The project was developed progressively according to the A3 stages:
+
+| Stage | Work |
+|---|---|
+| Stage 0 | PostgreSQL in Docker + Git ignore configuration |
+| Stage 1 | PostgreSQL connection through environment configuration + automatic table/seed setup |
+| Stage 2 | GET endpoints backed by PostgreSQL |
+| Stage 3 | Full CRUD operations on PostgreSQL |
+| Stage 4 | Dockerfile + Docker Compose for the complete stack |
+| Stage 5 | One-command stack + documentation + GitHub publishing |
+
+---
+
+# 🎯 Assignment Requirements Covered
+
+- ✅ PostgreSQL runs in a container.
+- ✅ Complete stack starts with `docker compose up`.
+- ✅ Database configuration comes from environment variables.
+- ✅ `.env` is ignored by Git.
+- ✅ `.env.example` is committed with placeholder values.
+- ✅ No database password is hardcoded in `compose.yaml`.
+- ✅ `tasks` table is created automatically if missing.
+- ✅ Three example tasks are seeded only when the table is empty.
+- ✅ Five required CRUD task endpoints work against PostgreSQL.
+- ✅ Parameterized PostgreSQL queries are used.
+- ✅ `200`, `201`, `204`, `400`, and `404` responses are handled.
+- ✅ Errors are returned as JSON.
+- ✅ Docker volume provides database persistence.
+- ✅ README documents the one-command startup.
+- ✅ Endpoint table is included.
+- ✅ `curl -i` testing is documented.
+- ✅ PostgreSQL database screenshot evidence is included.
+- ✅ Project is maintained in the same GitHub repository used for A1/A2.
+
+---
+
+# 📚 Key Concepts Learned
+
+### Docker Image
+A frozen recipe containing a program and everything needed to run it.
+
+### Container
+A running instance of a Docker image.
+
+### PostgreSQL
+A relational database server used to store the task rows.
+
+### Volume
+Persistent storage that allows PostgreSQL data to survive container restarts.
+
+### Docker Compose
+A tool for defining and starting multiple services together.
+
+### `.env`
+A local environment configuration file containing values such as database credentials.
+
+### `.env.example`
+A safe template showing which environment variables another developer must provide.
+
+### Parameterized Query
+A SQL query that uses placeholders such as `$1` and passes values separately.
+
+### Seed
+Initial example data inserted when the database table is empty.
+
+### CRUD
+Create, Read, Update and Delete — the four core database operations implemented by the API.
+
+---
+
+# 👨‍💻 Git Workflow
+
+Each major assignment stage was committed separately so the project history shows the development progression.
+
+Example:
+
+```bash
+git log --oneline
 ```
 
-This allows each clone of the repository to create and maintain its own local SQLite database.
+The repository contains the A1/A2 history as well as the A3 stage commits.
 
 ---
 
-# 🔀 Git Development Stages
+# 📄 License
 
-The project was developed incrementally through meaningful commits.
-
-## Assignment 1
-
-```text
-A1
-│
-├── Stage 0: hello server
-├── Stage 1: root and health endpoints
-├── Stage 2: read endpoints with 404
-├── Stage 3: create with validation
-├── Stage 4: full CRUD
-├── Stage 5: Swagger UI
-└── Stage 6: publish and docs
-```
-
-## Assignment 2 — SQLite Migration
-
-```text
-A2
-│
-├── Stage 0: create SQLite database
-├── Stage 1: database read endpoints
-├── Stage 2: insert into database
-├── Stage 3: update and delete with SQL
-├── Stage 4: explored SQLite
-└── Stage 5: database documentation
-```
-
----
-
-# 🎯 Learning Objectives
-
-Through this project, I practiced:
-
-- REST API fundamentals
-- HTTP methods
-- CRUD operations
-- HTTP status codes
-- JSON request and response handling
-- Request body parsing
-- Path parameters
-- Input validation
-- Express.js routing
-- Swagger UI
-- OpenAPI 3.0
-- API testing with curl
-- SQLite database
-- SQL queries
-- Parameterized queries
-- Database persistence
-- Automatic database initialization
-- Git and GitHub
-- Writing API documentation
-
----
-
-# 👨‍💻 Author
-
-**Md Anees Khan**
-
-B.Tech Computer Science & Engineering Student
-Maulana Azad National Urdu University
-
----
-
-# ⭐ Project Status
-
-**Completed**
-
-The project implements a complete SQLite-backed CRUD REST API with validation, Swagger documentation, API testing, database persistence, automatic database initialization, SQLite exploration, and Git/GitHub workflow.
+This project was created as part of the **FlyRank Internship Backend Track **.

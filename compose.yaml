@@ -1,12 +1,11 @@
 services:
-
   api:
     build: .
     ports:
       - "3000:3000"
     environment:
-      PORT: 3000
-      DATABASE_URL: postgres://postgres:dev@db:5432/tasks
+      PORT: ${PORT}
+      DATABASE_URL: ${DATABASE_URL_DOCKER}
     depends_on:
       db:
         condition: service_healthy
@@ -14,7 +13,7 @@ services:
   db:
     image: postgres:17
     environment:
-      POSTGRES_PASSWORD: dev
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: tasks
     volumes:
       - taskdata:/var/lib/postgresql/data
